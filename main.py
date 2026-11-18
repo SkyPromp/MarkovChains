@@ -1,4 +1,3 @@
-from pprint import pprint
 from random import randint
 from collections import OrderedDict
 from typing import TypeAlias
@@ -10,11 +9,7 @@ stop_symbol = "$"
 length = 3
 
 
-def generateChains() -> MarkovChain:
-    filename = "vlaamse_achternamen.txt"
-    # filename = "waalse_achternamen.txt"
-    # filename = "brusselse_achternamen.txt"
-    # filename = "belgische_achternamen.txt"
+def generateChains(filename: str) -> MarkovChain:
     chains = OrderedDict()
 
     with open(filename, "r", encoding="utf-8") as f:
@@ -78,6 +73,10 @@ def generateName(chains: MarkovChain):
     return output
 
 
-chains = generateChains()
+filename = "vlaamse_achternamen.txt"
+# filename = "waalse_achternamen.txt"
+# filename = "brusselse_achternamen.txt"
+# filename = "belgische_achternamen.txt"
+chains = generateChains(filename)
 output = generateName(chains)
 print(output)
