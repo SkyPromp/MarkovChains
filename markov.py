@@ -15,6 +15,7 @@ class MarkovChain:
     def generateChains(self, filename: str, conn: sql.Connection):
         # batched_inserts = []
         transitions = {}
+        batch_size = 50000
 
         with open(filename, "r", encoding="utf-8") as f:
             # ------- Progress tracker, optional
@@ -43,6 +44,15 @@ class MarkovChain:
 
                 transitions[(current_symbol, self.stop_symbol)] = transitions.get((current_symbol, self.stop_symbol), 0) + 1
                 # batched_inserts.append((current_symbol, self.stop_symbol, 1))
+                
+                if line_nr % batch_size == 0:
+                    conn.executemany("""
+                        INSERT INTO transitions
+                        VALUES (?, ?, ?)
+                        ON CONFLICT(state, symbol)
+                        DO UPDATE SET count = count + excluded.count
+                    """, ((state, symbol, count) for (state, symbol), count in transitions.items()))
+                    transitions.clear()
 
         conn.executemany("""
             INSERT INTO transitions
