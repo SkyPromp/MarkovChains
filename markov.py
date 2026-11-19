@@ -65,7 +65,7 @@ class MarkovChain:
                 current_symbol = output[-self.length:]
 
             # choices, counts = findMatchingSymbols(conn, current_symbol)
-            choices, counts = findMatchingSymbolsLengthRegression(conn, current_symbol, threshold=0)
+            choices, counts = findMatchingSymbolsLengthRegression(conn, current_symbol, threshold=5)
             total = sum(counts)
             # If total > threshold -> pick shorter chain
 
