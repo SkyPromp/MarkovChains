@@ -12,7 +12,7 @@ class MarkovChain:
     def generateChains(self, filename: str, conn: sql.Connection):
         # batched_inserts = []
         transitions = {}
-        batch_size = 50000
+        batch_size = 10000
 
         with open(filename, "r", encoding="utf-8") as f:
             # ------- Progress tracker, optional

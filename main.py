@@ -34,10 +34,10 @@ createTable(conn)
 conn.commit()
 
 if not tableHasData(conn):
-    while markov.length > 0:  # Reverse this, go from 1 to n instead of n to 1
+    for i in range(1, length + 1):
         print(f"Generates length: {markov.length}")
+        markov.length = i
         markov.generateChains(f"data/{filename}", conn)
-        markov.length -= 1
 
 # buffer = "By"
 buffer = ""
