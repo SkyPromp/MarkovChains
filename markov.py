@@ -3,15 +3,7 @@ from typing import Optional, TypeAlias, Dict
 from pickle import load, dump
 from os.path import exists
 from sys import version_info
-
-
-if version_info >= (3, 7):
-    DictType = dict
-else:
-    from collections import OrderedDict
-    DictType = OrderedDict
-
-MarkovChainType: TypeAlias = DictType[str, DictType[str, int]]
+import sqlite3 as sql
 
 
 class MarkovChain:
@@ -20,8 +12,9 @@ class MarkovChain:
         self.stop_symbol = stop_symbol
         self.length = length
 
-    def generateChains(self, filename: str) -> MarkovChainType:  # Train
-        chains = dict()
+    def generateChains(self, filename: str, conn: sql.Connection):
+        # batched_inserts = []
+        transitions = {}
 
         with open(filename, "r", encoding="utf-8") as f:
             # ------- Progress tracker, optional
@@ -44,29 +37,22 @@ class MarkovChain:
                     buffer += symbol
                     buffer = buffer[-self.length:]
 
-                    if current_symbol in chains:
-                        if symbol in chains[current_symbol]:
-                            chains[current_symbol][symbol] += 1
-                        else:
-                            chains[current_symbol][symbol] = 1
-                    else:
-                        chains[current_symbol] = dict([(symbol, 1)])
+                    # batched_inserts.append((current_symbol, symbol, 1))
+                    transitions[(current_symbol, symbol)] = transitions.get((current_symbol, symbol), 0) + 1
                     current_symbol = buffer
 
-                if len(buffer) == self.length:
-                    current_symbol = buffer[-self.length:]
+                transitions[(current_symbol, self.stop_symbol)] = transitions.get((current_symbol, self.stop_symbol), 0) + 1
+                # batched_inserts.append((current_symbol, self.stop_symbol, 1))
 
-                if current_symbol in chains:
-                    if self.stop_symbol in chains[current_symbol]:
-                        chains[current_symbol][self.stop_symbol] += 1
-                    else:
-                        chains[current_symbol][self.stop_symbol] = 1
-                else:
-                    chains[current_symbol] = dict([(self.stop_symbol, 1)])
+        conn.executemany("""
+            INSERT INTO transitions
+            VALUES (?, ?, ?)
+            ON CONFLICT(state, symbol)
+            DO UPDATE SET count = count + excluded.count
+        """, ((state, symbol, count) for (state, symbol), count in transitions.items()))
+        conn.commit()
 
-        return chains
-
-    def generateOutput(self, chains: MarkovChainType, buffer="") -> str:  # Run
+    def generateOutput(self, conn: sql.Connection, buffer="") -> str:  # Run
         if buffer == "":
             current_symbol = self.start_symbol
 
@@ -81,9 +67,15 @@ class MarkovChain:
             if current_symbol != self.start_symbol:
                 current_symbol = output[-self.length:]
 
-            options = chains[current_symbol]
-            choices = options.keys()
-            counts = options.values()
+            cursor = conn.execute("""
+                SELECT symbol, count
+                FROM transitions
+                WHERE state = (?)
+            """, (current_symbol,))
+            rows = cursor.fetchall()
+
+            choices = [row[0] for row in rows]
+            counts = [row[1] for row in rows]
             total = sum(counts)
             choice = randint(1, total)
 
@@ -100,15 +92,3 @@ class MarkovChain:
 
         return output
 
-    @staticmethod
-    def save(object: MarkovChainType, path: str) -> None:
-        with open(path, "wb") as f:
-            dump(object, f)
-
-    @staticmethod
-    def load(path: str) -> Optional[MarkovChainType]:
-        if exists(path):
-            with open(path, "rb") as f:
-                return load(f)
-
-        return None
