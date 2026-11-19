@@ -1,11 +1,17 @@
 from random import randint
-# from collections import dict
 from typing import Optional, TypeAlias, Dict
 from pickle import load, dump
 from os.path import exists
+from sys import version_info
 
 
-MarkovChainType: TypeAlias = Dict[str, Dict[str, int]]
+if version_info >= (3, 7):
+    DictType = dict
+else:
+    from collections import OrderedDict
+    DictType = OrderedDict
+
+MarkovChainType: TypeAlias = DictType[str, DictType[str, int]]
 
 
 class MarkovChain:
@@ -18,13 +24,16 @@ class MarkovChain:
         chains = dict()
 
         with open(filename, "r", encoding="utf-8") as f:
-            print("reading")
+            # ------- Progress tracker, optional
             total_lines = sum(1 for _ in f)
             f.seek(0)
+            # ------- Progress tracker, optional
 
             for line_nr, line in enumerate(f):
+                # ------- Progress tracker, optional
                 if line_nr % 1000 == 0:
                     print(f"Progress: {line_nr * 100 / total_lines:.2f}%")
+                # ------- Progress tracker, optional
 
                 line = line.strip()
 
