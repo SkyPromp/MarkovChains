@@ -1,6 +1,8 @@
 from markov import MarkovChain
 import sqlite3 as sql
 
+from sqlite_interface import createTable, tableHasData
+
 
 # filename = "vlaamse_achternamen.txt"
 # filename = "waalse_achternamen.txt"
@@ -20,31 +22,21 @@ filename = "clean_sentences_150k.txt"
 # filename = "data.txt"
 
 
-length = 20
+length = 3
 markov = MarkovChain(start_symbol="&&&&", stop_symbol="$$$$", length=length)
 
 save_filename = f"models/buf_{length}_{filename}.db"
 
 conn = sql.connect(save_filename)
-conn.execute(
-    """
-        CREATE TABLE IF NOT EXISTS transitions (
-            state TEXT NOT NULL,
-            symbol TEXT NOT NULL,
-            count INTEGER NOT NULL,
-            PRIMARY KEY (state, symbol)
-        ) WITHOUT ROWID
-    """
-)
 
+createTable(conn)
 conn.commit()
 
-if not conn.execute("SELECT EXISTS (SELECT 1 FROM transitions LIMIT 1)").fetchone()[0]:
+if not tableHasData(conn):
     print("Generates")
     markov.generateChains(f"data/{filename}", conn)
 
-# buffer = "Wit"
-buffer = ""
+buffer = "By"
 
 print(f"Outputs with buffer <<{buffer}>>:\n")
 

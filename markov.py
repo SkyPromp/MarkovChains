@@ -1,9 +1,6 @@
 from random import randint
-from typing import Optional, TypeAlias, Dict
-from pickle import load, dump
-from os.path import exists
-from sys import version_info
 import sqlite3 as sql
+from sqlite_interface import findMatchingSymbols, insertMany
 
 
 class MarkovChain:
@@ -46,20 +43,10 @@ class MarkovChain:
                 # batched_inserts.append((current_symbol, self.stop_symbol, 1))
                 
                 if line_nr % batch_size == 0:
-                    conn.executemany("""
-                        INSERT INTO transitions
-                        VALUES (?, ?, ?)
-                        ON CONFLICT(state, symbol)
-                        DO UPDATE SET count = count + excluded.count
-                    """, ((state, symbol, count) for (state, symbol), count in transitions.items()))
+                    insertMany(conn, transitions)
                     transitions.clear()
 
-        conn.executemany("""
-            INSERT INTO transitions
-            VALUES (?, ?, ?)
-            ON CONFLICT(state, symbol)
-            DO UPDATE SET count = count + excluded.count
-        """, ((state, symbol, count) for (state, symbol), count in transitions.items()))
+        insertMany(conn, transitions)
         conn.commit()
 
     def generateOutput(self, conn: sql.Connection, buffer="") -> str:  # Run
@@ -69,7 +56,7 @@ class MarkovChain:
             if len(current_symbol) != self.length:
                 pass  # TODO: pick random option with the correct length
         else:
-            current_symbol = buffer
+            current_symbol = buffer[-self.length:]
 
         output = buffer
 
@@ -77,16 +64,11 @@ class MarkovChain:
             if current_symbol != self.start_symbol:
                 current_symbol = output[-self.length:]
 
-            cursor = conn.execute("""
-                SELECT symbol, count
-                FROM transitions
-                WHERE state = (?)
-            """, (current_symbol,))
-            rows = cursor.fetchall()
-
-            choices = [row[0] for row in rows]
-            counts = [row[1] for row in rows]
+            choices, counts = findMatchingSymbols(conn, current_symbol)
             total = sum(counts)
+            if total == 0:
+                print(f"Buffer <<{buffer}>> could not be found!")
+                exit()
             choice = randint(1, total)
 
             for ch, co in zip(choices, counts):
