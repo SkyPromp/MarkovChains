@@ -39,3 +39,30 @@ def findMatchingSymbols(conn: sql.Connection, state: str) -> tuple[list[str], li
     counts = [row[1] for row in rows]
 
     return choices, counts
+
+
+def findMatchingSymbolsLengthRegression(conn: sql.Connection, state: str, threshold: int=0) -> tuple[list[str], list[int]]:
+    length = len(state)
+    total = -1
+    choices = []
+    counts = []
+
+    while total < threshold and length > 0:
+        state = state[-length:]
+
+        cursor = conn.execute("""
+            SELECT symbol, count
+            FROM transitions
+            WHERE state = (?)
+        """, (state,))
+        rows = cursor.fetchall()
+
+        choices = [row[0] for row in rows]
+        counts = [row[1] for row in rows]
+
+        total = sum(counts)
+        print(state, total)  # TODO REMOVE (FOR LOGGING PURPOSES TO DETERMINE THRESHOLD)
+        length -= 1
+
+    return choices, counts
+

@@ -22,10 +22,11 @@ filename = "clean_sentences_150k.txt"
 # filename = "data.txt"
 
 
-length = 3
+length = 15
 markov = MarkovChain(start_symbol="&&&&", stop_symbol="$$$$", length=length)
 
 save_filename = f"models/buf_{length}_{filename}.db"
+save_filename = f"models/reg_buf_{length}_{filename}.db"
 
 conn = sql.connect(save_filename)
 
@@ -33,10 +34,13 @@ createTable(conn)
 conn.commit()
 
 if not tableHasData(conn):
-    print("Generates")
-    markov.generateChains(f"data/{filename}", conn)
+    while markov.length > 0:  # Reverse this, go from 1 to n instead of n to 1
+        print(f"Generates length: {markov.length}")
+        markov.generateChains(f"data/{filename}", conn)
+        markov.length -= 1
 
-buffer = "By"
+# buffer = "By"
+buffer = ""
 
 print(f"Outputs with buffer <<{buffer}>>:\n")
 

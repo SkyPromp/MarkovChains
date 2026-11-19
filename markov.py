@@ -1,6 +1,6 @@
 from random import randint
 import sqlite3 as sql
-from sqlite_interface import findMatchingSymbols, insertMany
+from sqlite_interface import findMatchingSymbols, findMatchingSymbolsLengthRegression, insertMany
 
 
 class MarkovChain:
@@ -22,7 +22,7 @@ class MarkovChain:
 
             for line_nr, line in enumerate(f):
                 # ------- Progress tracker, optional
-                if line_nr % 1000 == 0:
+                if line_nr % 5000 == 0:
                     print(f"Progress: {line_nr * 100 / total_lines:.2f}%")
                 # ------- Progress tracker, optional
 
@@ -64,8 +64,11 @@ class MarkovChain:
             if current_symbol != self.start_symbol:
                 current_symbol = output[-self.length:]
 
-            choices, counts = findMatchingSymbols(conn, current_symbol)
+            # choices, counts = findMatchingSymbols(conn, current_symbol)
+            choices, counts = findMatchingSymbolsLengthRegression(conn, current_symbol, threshold=0)
             total = sum(counts)
+            # If total > threshold -> pick shorter chain
+
             if total == 0:
                 print(f"Buffer <<{buffer}>> could not be found!")
                 exit()
